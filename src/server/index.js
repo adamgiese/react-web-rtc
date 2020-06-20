@@ -1,11 +1,13 @@
-const http = require('http');
+const express = require('express')
+const { ExpressPeerServer } = require('peer');
 
-const PORT = process.env.PORT || 3000;
+const app = express()
 
-const server = http.createServer((req, res) => {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/plain');
-    res.end('Hello World');
-});
+const PORT = process.env.PORT || 3000
+const DEBUG = process.env.DEBUG || true
 
-server.listen(PORT)
+srv = app.listen(PORT)
+
+app.use('/peerjs', ExpressPeerServer(srv, {
+    debug: DEBUG,
+}))
