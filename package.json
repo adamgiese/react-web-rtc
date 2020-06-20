@@ -4,6 +4,7 @@
   "description": "React application with shared peer-to-peer state",
   "main": "index.js",
   "scripts": {
+    "client": "parcel src/client/index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
