@@ -1,12 +1,13 @@
 import React from 'react'
 import Peer from 'peerjs'
 import useLocalStorage from '/services/hooks/useLocalStorage.js'
+import useEventCallback from '/services/hooks/useEventCallback.js'
 import peerOptions from '/shared/peerOptions.js'
 
 const { useEffect, useState, useRef } = React
 
 export default () => {
-  const [peerId, setPeerId] = useLocalStorage('peerId', null)
+  const [peerId, setPeerId] = useLocalStorage('peerId', undefined)
   const peer = useRef(new Peer(peerId, peerOptions))
   const textArea = useRef(null)
   const [connection, setConnection] = useState(null)
@@ -17,40 +18,22 @@ export default () => {
     console.log(`connection status: ${connectionStatus}`)
   }, [connectionStatus])
 
-  useEffect(() => {
-    peer.current.on('open', setPeerId)
+  useEventCallback(peer && peer.current, 'open', setPeerId)
+  useEventCallback(peer && peer.current, 'connection', setConnection)
 
-    console.log(peer.current)
-    peer.current.on('connection', c => {
-      setConnection(c)
-    })
-  }, [peer])
+  useEventCallback(connection, 'open', () => {
+    setConnectionStatus('open')
+  })
 
-  useEffect(() => { // set up connection callbacks
-    if (connection) {
-      connection.on('data', (data) => {
-        setText(data)
-        textArea.current.innerText = data
-      });
+  useEventCallback(connection, 'data', (data) => {
+    setText(data)
+    textArea.current.innerText = data
+  })
 
-      connection.on('open', () => {
-        setConnectionStatus('open')
-      });
-
-      connection.on('error', (error) => {
-        setConnectionStatus('error')
-        console.log(error)
-      });
-    }
-  }, [connection])
-
-  useEffect(() => {
-    if (connection) {
-      connection.on('data', (data) => {
-        setText(data)
-      });
-    }
-  }, [connection])
+  useEventCallback(connection, 'error', (error) => {
+    setConnectionStatus('error')
+    console.log(error)
+  })
 
   const handleTextSend = () => {
     if (connection && connectionStatus === 'open' && text) {

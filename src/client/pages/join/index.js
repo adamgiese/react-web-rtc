@@ -1,6 +1,7 @@
 import React from 'react'
 import Peer from 'peerjs'
 import useLocalStorage from '/services/hooks/useLocalStorage.js'
+import useEventCallback from '/services/hooks/useEventCallback.js'
 import { useLocation } from 'react-router-dom';
 import queryString from 'query-string'
 import peerOptions from '/shared/peerOptions.js'
@@ -18,43 +19,25 @@ export default () => {
   const input = useRef(null)
   const [text, setText] = useState(null)
 
-  useEffect(() => { // handle peer open
-    peer.current.on('open', setPeerId)
-  }, [peer])
-
-  useEffect(() => {
-    if (connection) {
-      connection.on('data', (data) => {
-        setText(data)
-        textArea.current.innerText = data
-      });
-
-      connection.on('open', () => {
-        setConnectionStatus('open')
-      });
-
-      connection.on('error', (error) => {
-        setConnectionStatus('error')
-        console.log(error)
-      });
-    }
-  }, [connection])
-
   useEffect(() => {
     console.log(`connection status: ${connectionStatus}`)
   }, [connectionStatus])
 
-  useEffect(() => {
-    if (connection) {
-      connection.on('data', (data) => {
-        setText(data)
-      });
+  useEventCallback(peer && peer.current, 'open', setPeerId)
 
-      connection.on('error', (error) => {
-        console.log(error)
-      });
-    }
-  }, [connection])
+  useEventCallback(connection, 'open', () => {
+    setConnectionStatus('open')
+  })
+
+  useEventCallback(connection, 'data', (data) => {
+    setText(data)
+    textArea.current.innerText = data
+  })
+
+  useEventCallback(connection, 'error', () => {
+    setConnectionStatus('error')
+    console.log(error)
+  })
 
   const onSubmit = e => {
     const val = input.current.value
