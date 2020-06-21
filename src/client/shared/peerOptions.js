@@ -1,6 +1,6 @@
 export default {
   host: process.env.HOST || 'localhost',
-  port: process.env.PORT || 3000,
+  port: process.env.PORT === '80' ? undefined : 3000,
   path: '/peerjs',
   debug: process.env.DEBUG ? 2 : 0,
 }
