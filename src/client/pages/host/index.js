@@ -4,7 +4,33 @@ import useLocalStorage from '/services/hooks/useLocalStorage.js'
 import useEventCallback from '/services/hooks/useEventCallback.js'
 import peerOptions from '/shared/peerOptions.js'
 
-const { useEffect, useState, useRef } = React
+const { useEffect, useState, useRef, useReducer } = React
+
+const defaultReducer = [(state, action) => {
+  if (!action) { return state }
+
+  switch (action.type) {
+    case 'sync':
+      return {
+        ...state,
+        status: 'in-sync',
+      }
+    case 'increment':
+      return {
+        ...state,
+        count: state.count + 1,
+        status: 'out-of-sync',
+      };
+    case 'decrement':
+      return {
+        ...state,
+        count: state.count - 1,
+        status: 'out-of-sync',
+      };
+    default:
+      throw new Error();
+  }
+}, { count: 0 }]
 
 export default () => {
   const [peerId, setPeerId] = useLocalStorage('peerId', undefined)
@@ -12,7 +38,23 @@ export default () => {
   const textArea = useRef(null)
   const [connection, setConnection] = useState(null)
   const [connectionStatus, setConnectionStatus] = useState(null)
-  const [text, setText] = useState(null)
+  const [state, dispatch] = useReducer(...defaultReducer)
+
+  const {
+    status,
+    count,
+  } = state
+
+  const shared = {
+    count,
+  }
+
+  useEffect(() => {
+    if (connection && connectionStatus === 'open' && status === 'out-of-sync') {
+      connection.send(shared)
+      dispatch({type: 'sync'})
+    }
+  }, [status])
 
   useEffect(() => {
     console.log(`connection status: ${connectionStatus}`)
@@ -23,34 +65,26 @@ export default () => {
 
   useEventCallback(connection, 'open', () => {
     setConnectionStatus('open')
+    connection.send(shared)
   })
 
-  useEventCallback(connection, 'data', (data) => {
-    setText(data)
-    textArea.current.innerText = data
-  })
+  useEventCallback(connection, 'data', dispatch)
 
   useEventCallback(connection, 'error', (error) => {
     setConnectionStatus('error')
     console.log(error)
   })
 
-  const handleTextSend = () => {
-    if (connection && connectionStatus === 'open' && text) {
-      connection.send(text)
-    }
-  }
-
-  const handleTextAreaChange = e => {
-    setText(e.target.value)
-  }
+  const handleIncrement = () => dispatch({type: 'increment'})
+  const handleDecrement = () => dispatch({type: 'decrement'})
 
   return <div>
-    <h2>Host a Connection</h2>
     <code>{peerId}</code>
     <br />
-    <textarea onChange={handleTextAreaChange} ref={textArea} />
-    <button onClick={handleTextSend} disabled={connectionStatus !== 'open'}>Send Text</button>
-    <p style={{color: 'red'}}>{text}</p>
+    <button onClick={handleIncrement}>+</button>
+    <button onClick={handleDecrement}>-</button>
+    <br />
+    <strong>{state.count}</strong>
+    <br />
   </div>
 }

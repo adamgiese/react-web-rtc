@@ -11,7 +11,6 @@ import ReactDOM from "react-dom";
 
 const App = () => {
   return <Router>
-    <h1>Hello, World</h1>
     <Switch>
       <Route path='/host'>
         <Host />

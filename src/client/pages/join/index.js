@@ -6,10 +6,12 @@ import { useLocation } from 'react-router-dom';
 import queryString from 'query-string'
 import peerOptions from '/shared/peerOptions.js'
 
-const { useEffect, useState, useRef } = React
+const { useEffect, useState, useRef, Fragment } = React
 
 export default () => {
   const params = queryString.parse(useLocation().search)
+
+  const defaultFriendId = params.id
   const [peerId, setPeerId] = useLocalStorage('peerId', null)
   const peer = useRef(new Peer(peerId, peerOptions))
   const textArea = useRef(null)
@@ -17,7 +19,10 @@ export default () => {
   const [connection, setConnection] = useState(null)
   const [connectionStatus, setConnectionStatus] = useState(null)
   const input = useRef(null)
-  const [text, setText] = useState(null)
+  const [receivedState, setReceivedState] = useState({})
+  const {
+    count,
+  } = receivedState
 
   useEffect(() => {
     console.log(`connection status: ${connectionStatus}`)
@@ -30,8 +35,7 @@ export default () => {
   })
 
   useEventCallback(connection, 'data', (data) => {
-    setText(data)
-    textArea.current.innerText = data
+    setReceivedState(data)
   })
 
   useEventCallback(connection, 'error', () => {
@@ -39,26 +43,40 @@ export default () => {
     console.log(error)
   })
 
+  const connectToPeer = id => {
+    setFriendId(id)
+    setConnectionStatus('pending')
+    setConnection(peer.current.connect(id))
+  }
+
   const onSubmit = e => {
     const val = input.current.value
+    connectToPeer(val)
     e.preventDefault()
-    setFriendId(val)
-    setConnectionStatus('pending')
-    setConnection(peer.current.connect(val))
   }
 
-  const handleTextAreaChange = e => {
-    setText(e.target.value)
+  useEffect(() => {
+    connectToPeer(defaultFriendId)
+  }, [defaultFriendId])
+
+  const handleIncrement = () => {
+    if (connection && connectionStatus === 'open') {
+      connection.send({
+        type: 'increment'
+      })
+    }
   }
 
-  const handleTextSend = () => {
-    if (connection && connectionStatus === 'open' && text) {
-      connection.send(text)
+  const handleDecrement = () => {
+    if (connection && connectionStatus === 'open') {
+      connection.send({
+        type: 'decrement'
+      })
     }
   }
 
   return <div>
-    { connectionStatus === 'open' ? null :
+    { ['open', 'pending'].includes(connectionStatus) ? null :
       <form onSubmit={onSubmit}>
         <code>{peerId}</code>
         <pre>
@@ -70,13 +88,18 @@ export default () => {
         <input
           type="submit"
           value="Connect"
-          disabled={['open','pending'].includes(connectionStatus)}
         />
       </form>
     }
 
-    <textarea onChange={handleTextAreaChange} ref={textArea} />
-    <button onClick={handleTextSend} disabled={connectionStatus !== 'open'}>Send Text</button>
-    <p style={{color: 'red'}}>{text}</p>
+    { connectionStatus === 'open' ? <Fragment>
+      <br />
+      <button onClick={handleIncrement}>+</button>
+      <button onClick={handleDecrement}>-</button>
+      <br />
+      <strong>{count}</strong>
+    </Fragment> : null }
+
+    { connectionStatus === 'pending' ? <h2>Pending</h2> : null }
   </div>
 }
